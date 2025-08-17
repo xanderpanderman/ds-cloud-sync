@@ -321,16 +321,23 @@ def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None)
             token_line = None
             
             # Try to find JSON token in the output
+            # rclone authorize outputs the token with surrounding text we need to extract
             for line in auth_result.stdout.split('\n'):
                 line = line.strip()
-                if line.startswith('{') and '"access_token"' in line:
-                    try:
-                        # Validate it's proper JSON
-                        json.loads(line)
-                        token_line = line
-                        break
-                    except:
-                        continue
+                # Look for lines containing JSON with access_token
+                if '{' in line and '"access_token"' in line:
+                    # Extract just the JSON part (between { and })
+                    start_idx = line.find('{')
+                    end_idx = line.rfind('}')
+                    if start_idx != -1 and end_idx != -1:
+                        json_str = line[start_idx:end_idx+1]
+                        try:
+                            # Validate it's proper JSON
+                            json.loads(json_str)
+                            token_line = json_str
+                            break
+                        except:
+                            continue
             
             if token_line:
                 if output_cb:
