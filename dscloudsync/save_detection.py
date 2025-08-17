@@ -93,6 +93,12 @@ def check_ds2_installation() -> dict:
         # Check if any profile has actual save files
         has_saves = False
         for profile_dir in profile_dirs:
+            # Check for any .sl2 files, not just specific names
+            sl2_files = list(profile_dir.glob("*.sl2"))
+            if sl2_files:
+                has_saves = True
+                break
+            # Also check the specific names as backup
             for save_name in SAVE_BASENAMES:
                 if (profile_dir / save_name).exists():
                     has_saves = True
