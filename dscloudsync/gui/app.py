@@ -11,7 +11,7 @@ from pathlib import Path
 
 from ..config import load_config, save_config
 from ..save_detection import detect_save_root, pick_profile_dir, find_save_file, check_ds2_installation
-from ..rclone_manager import ensure_rclone, RCLONE_BIN, bisync
+from ..rclone_manager import ensure_rclone, RCLONE_BIN, bisync, list_existing_remotes
 from ..sync_engine import smart_sync, preview_text, remote_find_save
 from ..autostart import install_autostart, uninstall_autostart
 from ..utils import LOG_FILE
@@ -158,10 +158,20 @@ class App(tk.Tk):
                     self.after(0, lambda: self.set_status("Checking rclone..."))
                     ensure_rclone(self.set_status)
                 
-                # Show first-run wizard if not configured (run on main thread)
+                # Check for existing rclone remotes before showing first-run wizard
                 if "remote" not in self.cfg:
-                    self.after(0, self._show_first_run_wizard)
-                    return
+                    existing_remotes = list_existing_remotes()
+                    if existing_remotes:
+                        # Auto-configure with first available remote
+                        remote_name = existing_remotes[0]
+                        remote_config = f"{remote_name}:ds2cloudsync"
+                        self.cfg["remote"] = remote_config
+                        self.after(0, lambda: self.remote_var.set(remote_config))
+                        save_config(self.cfg)
+                        self.after(0, lambda: self.set_status(f"Using existing {remote_name} configuration"))
+                    else:
+                        self.after(0, self._show_first_run_wizard)
+                        return
                 
                 # Perform one-time resync for this host
                 host = platform.node()

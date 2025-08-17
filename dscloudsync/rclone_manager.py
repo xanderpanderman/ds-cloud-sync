@@ -192,6 +192,17 @@ def bisync(local_dir: str, remote_dir: str, resync: bool = False, output_cb=None
 
 
 
+def list_existing_remotes() -> list:
+    """List existing rclone remotes."""
+    try:
+        result = run([str(RCLONE_BIN), "listremotes"], check=False)
+        if result.returncode == 0:
+            return [line.strip().rstrip(':') for line in result.stdout.strip().split('\n') if line.strip()]
+        return []
+    except Exception:
+        return []
+
+
 def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None) -> bool:
     """Streamlined cloud provider setup with device authentication."""
     
