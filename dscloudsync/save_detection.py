@@ -144,8 +144,16 @@ def pick_profile_dir(root: Path) -> Path:
         default_profile.mkdir(parents=True, exist_ok=True)
         return default_profile
     
-    # Return most recently modified profile
+    # Return profile with most recent save file activity
     profile_dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    
+    # Additional check: prefer directories that actually contain save files
+    for profile_dir in profile_dirs:
+        sl2_files = list(profile_dir.glob("*.sl2"))
+        if sl2_files:
+            return profile_dir
+    
+    # Fallback to most recent
     return profile_dirs[0]
 
 
