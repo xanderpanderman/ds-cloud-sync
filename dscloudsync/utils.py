@@ -39,7 +39,7 @@ def log(msg: str) -> None:
         pass
 
 
-def run(cmd: list, check: bool = True, output_callback=None) -> subprocess.CompletedProcess:
+def run(cmd: list, check: bool = True, output_callback=None, env=None) -> subprocess.CompletedProcess:
     """Execute command and log output.
     
     Security: Commands are logged but sensitive output is not exposed to users.
@@ -67,7 +67,8 @@ def run(cmd: list, check: bool = True, output_callback=None) -> subprocess.Compl
             text=True,
             bufsize=1,
             universal_newlines=True,
-            shell=False
+            shell=False,
+            env=env
         )
         
         output_lines = []
@@ -97,7 +98,8 @@ def run(cmd: list, check: bool = True, output_callback=None) -> subprocess.Compl
             stdout=subprocess.PIPE, 
             stderr=subprocess.STDOUT, 
             text=True,
-            shell=False
+            shell=False,
+            env=env
         )
         output = result.stdout or ""
     

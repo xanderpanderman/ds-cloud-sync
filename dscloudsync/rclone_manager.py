@@ -236,9 +236,38 @@ def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None)
             output_cb("4. Authorize the application\n")
             output_cb("=" * 60 + "\n\n")
         
-        # Get auth token using rclone authorize
+        # Try rclone authorize, but handle SSL library issues on Steam Deck
         auth_cmd = [str(RCLONE_BIN), "authorize", backend_type]
-        auth_result = run(auth_cmd, check=False, output_callback=output_cb)
+        
+        # Set environment to potentially bypass SSL issues
+        import os
+        env = os.environ.copy()
+        env['SSL_CERT_FILE'] = ''
+        env['SSL_CERT_DIR'] = ''
+        
+        try:
+            auth_result = run(auth_cmd, check=False, output_callback=output_cb, env=env)
+        except Exception as e:
+            if output_cb:
+                output_cb(f"Authorization failed due to system libraries: {str(e)}\n")
+                output_cb("Falling back to manual setup instructions...\n\n")
+                output_cb("=" * 60 + "\n")
+                output_cb("MANUAL SETUP REQUIRED (Steam Deck)\n") 
+                output_cb("=" * 60 + "\n")
+                output_cb("Due to Steam Deck system limitations, please:\n\n")
+                output_cb("1. Open a new terminal (Konsole)\n")
+                output_cb("2. Navigate to the rclone directory:\n")
+                output_cb(f"   cd {RCLONE_BIN.parent}\n")
+                output_cb("3. Run rclone config:\n")
+                output_cb(f"   ./rclone config\n")
+                output_cb("4. Choose 'n' for new remote\n")
+                output_cb(f"5. Name: {remote_name}\n")
+                output_cb(f"6. Storage: {backend_type}\n")
+                output_cb("7. Follow authentication prompts\n")
+                output_cb("8. When asked about config_is_local, choose 'y'\n")
+                output_cb("9. When complete, restart this app\n")
+                output_cb("=" * 60 + "\n")
+            return False
         
         if auth_result.returncode == 0 and auth_result.stdout.strip():
             # Extract token from output
