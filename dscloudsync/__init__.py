@@ -12,4 +12,5 @@ __author__ = "DS2 Cloud Sync"
 APPNAME = "ds2cloudsync"
 APPID_SOTFS = "335300"  # Scholar of the First Sin
 APPID_VANILLA = "236430"  # Vanilla
+APPID_SOTFS_ALT = "334300"  # Scholar of the First Sin (alternative)
 SAVE_BASENAMES = ["DS2SOFS0000.sl2", "DARKSII0000.sl2"]

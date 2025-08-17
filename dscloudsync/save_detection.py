@@ -4,7 +4,7 @@ import os
 import platform
 from pathlib import Path
 
-from . import APPID_SOTFS, APPID_VANILLA, SAVE_BASENAMES
+from . import APPID_SOTFS, APPID_VANILLA, APPID_SOTFS_ALT, SAVE_BASENAMES
 
 
 def detect_save_root() -> Path:
@@ -43,7 +43,7 @@ def detect_save_root() -> Path:
     else:  # Linux/SteamOS
         base = Path.home() / ".local/share/Steam/steamapps/compatdata"
         
-        for appid in (APPID_SOTFS, APPID_VANILLA):
+        for appid in (APPID_SOTFS, APPID_SOTFS_ALT, APPID_VANILLA):
             users_dir = base / appid / "pfx" / "drive_c" / "users"
             if users_dir.exists():
                 for user_dir in users_dir.glob("*"):
@@ -51,7 +51,13 @@ def detect_save_root() -> Path:
                     if save_dir.exists():
                         return save_dir
         
-        # Default fallback for Steam Deck
+        # Default fallback for Steam Deck - try multiple app IDs
+        for appid in (APPID_SOTFS, APPID_SOTFS_ALT, APPID_VANILLA):
+            fallback = base / appid / "pfx" / "drive_c" / "users" / "steamuser" / "AppData" / "Roaming" / "DarkSoulsII"
+            if fallback.exists():
+                return fallback
+        
+        # Final fallback to most common
         return base / APPID_SOTFS / "pfx" / "drive_c" / "users" / "steamuser" / "AppData" / "Roaming" / "DarkSoulsII"
 
 
