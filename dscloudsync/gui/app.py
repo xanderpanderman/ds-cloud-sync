@@ -11,7 +11,7 @@ from pathlib import Path
 
 from ..config import load_config, save_config
 from ..save_detection import detect_save_root, pick_profile_dir, find_save_file, check_ds2_installation
-from ..rclone_manager import ensure_rclone, RCLONE_BIN, bisync, list_existing_remotes
+from ..rclone_manager import ensure_rclone, RCLONE_BIN, bisync, list_existing_remotes, test_remote_connection
 from ..sync_engine import smart_sync, preview_text, remote_find_save
 from ..autostart import install_autostart, uninstall_autostart
 from ..utils import LOG_FILE
@@ -162,13 +162,21 @@ class App(tk.Tk):
                 if "remote" not in self.cfg:
                     existing_remotes = list_existing_remotes()
                     if existing_remotes:
-                        # Auto-configure with first available remote
+                        # Test and configure first available remote
                         remote_name = existing_remotes[0]
-                        remote_config = f"{remote_name}:ds2cloudsync"
-                        self.cfg["remote"] = remote_config
-                        self.after(0, lambda: self.remote_var.set(remote_config))
-                        save_config(self.cfg)
-                        self.after(0, lambda: self.set_status(f"Using existing {remote_name} configuration"))
+                        self.after(0, lambda: self.set_status(f"Testing {remote_name} connection..."))
+                        
+                        # Test the connection and refresh token if needed
+                        if test_remote_connection(remote_name, lambda msg: self.after(0, lambda: self.set_status(msg.strip()))):
+                            remote_config = f"{remote_name}:ds2cloudsync"
+                            self.cfg["remote"] = remote_config
+                            self.after(0, lambda: self.remote_var.set(remote_config))
+                            save_config(self.cfg)
+                            self.after(0, lambda: self.set_status(f"Connected to {remote_name}"))
+                        else:
+                            self.after(0, lambda: self.set_status(f"Failed to connect to {remote_name}"))
+                            self.after(0, self._show_first_run_wizard)
+                            return
                     else:
                         self.after(0, self._show_first_run_wizard)
                         return

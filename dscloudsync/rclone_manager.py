@@ -203,6 +203,41 @@ def list_existing_remotes() -> list:
         return []
 
 
+def test_remote_connection(remote_name: str, output_cb=None) -> bool:
+    """Test if a remote connection works, refresh token if needed."""
+    try:
+        # Try a simple operation to test the connection
+        test_cmd = [str(RCLONE_BIN), "lsd", f"{remote_name}:", "--max-depth", "1"]
+        result = run(test_cmd, check=False, output_callback=output_cb)
+        
+        if result.returncode == 0:
+            return True
+            
+        # Check if it's a token issue
+        if "empty token" in result.stdout or "oauth" in result.stdout.lower():
+            if output_cb:
+                output_cb(f"Token expired for {remote_name}, refreshing...\n")
+            
+            # Attempt to refresh the token
+            refresh_cmd = [str(RCLONE_BIN), "config", "reconnect", remote_name]
+            refresh_result = run(refresh_cmd, check=False, output_callback=output_cb)
+            
+            if refresh_result.returncode == 0:
+                if output_cb:
+                    output_cb(f"Successfully refreshed {remote_name} token\n")
+                return True
+            else:
+                if output_cb:
+                    output_cb(f"Failed to refresh {remote_name} token: {refresh_result.stderr}\n")
+                
+        return False
+        
+    except Exception as e:
+        if output_cb:
+            output_cb(f"Error testing {remote_name}: {str(e)}\n")
+        return False
+
+
 def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None) -> bool:
     """Streamlined cloud provider setup with device authentication."""
     
