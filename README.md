@@ -44,13 +44,15 @@ A cross-platform GUI application for syncing Dark Souls 2 saves (both Scholar of
 
 **Quick install** (Desktop Mode terminal):
 ```bash
-curl -L https://github.com/xanderpanderman/ds-cloud-sync/releases/download/v1.0.0/ds2cloudsync-linux-x64 -o ds2cloudsync && chmod +x ds2cloudsync && ./ds2cloudsync
+curl -L -k https://github.com/xanderpanderman/ds-cloud-sync/releases/download/v1.0.0/ds2cloudsync-linux-x64 -o ds2cloudsync && chmod +x ds2cloudsync && ./ds2cloudsync
 ```
 
 **Install to Applications folder**:
 ```bash
-mkdir -p ~/Applications && cd ~/Applications && curl -L https://github.com/xanderpanderman/ds-cloud-sync/releases/download/v1.0.0/ds2cloudsync-linux-x64 -o ds2cloudsync && chmod +x ds2cloudsync && ./ds2cloudsync
+mkdir -p ~/Applications && cd ~/Applications && curl -L -k https://github.com/xanderpanderman/ds-cloud-sync/releases/download/v1.0.0/ds2cloudsync-linux-x64 -o ds2cloudsync && chmod +x ds2cloudsync && ./ds2cloudsync
 ```
+
+*Note: The `-k` flag bypasses SSL certificate verification if needed on Steam Deck*
 
 To add to Gaming Mode: Right-click Steam → Add a Non-Steam Game → Browse to the binary
 
