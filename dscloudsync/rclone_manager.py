@@ -316,12 +316,21 @@ def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None)
             return False
         
         if auth_result.returncode == 0 and auth_result.stdout.strip():
-            # Extract token from output
+            # Extract token from output - looking for JSON token object
+            import json
             token_line = None
+            
+            # Try to find JSON token in the output
             for line in auth_result.stdout.split('\n'):
-                if 'token' in line.lower() or '{' in line:
-                    token_line = line.strip()
-                    break
+                line = line.strip()
+                if line.startswith('{') and '"access_token"' in line:
+                    try:
+                        # Validate it's proper JSON
+                        json.loads(line)
+                        token_line = line
+                        break
+                    except:
+                        continue
             
             if token_line:
                 if output_cb:
@@ -342,6 +351,7 @@ def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None)
             else:
                 if output_cb:
                     output_cb("❌ Could not extract authentication token\n")
+                    output_cb(f"Debug - auth output: {auth_result.stdout[:500]}\n")
         else:
             if output_cb:
                 output_cb(f"❌ Authentication failed: {auth_result.stderr}\n")

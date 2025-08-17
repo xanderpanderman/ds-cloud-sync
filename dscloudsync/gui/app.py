@@ -196,6 +196,20 @@ class App(tk.Tk):
                         self.after(0, lambda: init_dialog.append_output(text))
                     
                     try:
+                        self.after(0, lambda: self.set_status("Checking for existing cloud saves..."))
+                        
+                        # First check if there are existing saves in the cloud
+                        from ..sync_engine import remote_find_save
+                        remote_save = remote_find_save(self.cfg["remote"])
+                        
+                        if remote_save and not find_save_file(self.local_dir).exists():
+                            # Cloud has saves but local doesn't - pull from cloud first
+                            self.after(0, lambda: self.set_status("Found existing cloud saves. Downloading..."))
+                            from ..sync_engine import pull_remote_over_local
+                            pull_remote_over_local(self.local_dir, self.cfg["remote"], output_cb=output_callback)
+                            self.after(0, lambda: self.set_status("Downloaded cloud saves successfully"))
+                        
+                        # Now do the resync to establish baseline
                         self.after(0, lambda: self.set_status("Initializing this device (one-time)..."))
                         bisync(str(self.local_dir), self.cfg["remote"], resync=True, output_cb=output_callback)
                         
