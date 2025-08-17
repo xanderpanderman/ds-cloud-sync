@@ -141,9 +141,49 @@ The app automatically detects saves in these locations:
 ## Troubleshooting
 
 ### Common Issues
-- **"No saves detected"**: Make sure Dark Souls 2 is installed and you've started the game at least once
-- **Sync conflicts**: The app will show you both saves and let you choose which to keep
-- **Cloud connection issues**: Check your internet connection and re-authenticate if needed
+
+#### No saves detected
+Make sure Dark Souls 2 is installed and you've started the game at least once
+
+#### Sync conflicts
+The app will show you both saves and let you choose which to keep
+
+#### Cloud connection issues
+Check your internet connection and re-authenticate if needed
+
+#### Steam Deck: "address already in use" during cloud setup
+If you get port conflicts during rclone setup:
+
+1. **Kill stuck processes**:
+```bash
+sudo fuser -k 53682/tcp
+sudo pkill -f rclone
+```
+
+2. **If that doesn't work, restart Steam Deck** (unfortunately this is the most reliable fix)
+
+3. **Alternative - use external keyboard**: Connect USB keyboard temporarily for easier rclone config
+
+4. **Manual rclone setup**:
+```bash
+cd ~/.local/share/ds2cloudsync/rclone
+./rclone config delete gdrive
+./rclone config
+```
+- Choose "n" for new remote
+- Name: gdrive  
+- Type: drive
+- When prompted about browser auth, choose "N" (no)
+- Copy the URL to Firefox and complete authentication
+- Paste the code back
+
+#### "empty token" or OAuth errors
+The app should automatically refresh tokens, but if it fails:
+```bash
+cd ~/.local/share/ds2cloudsync/rclone
+./rclone config
+```
+Edit the existing remote and re-authenticate following the prompts.
 
 ### Getting Help
 1. Check [existing issues](https://github.com/xanderpanderman/ds-cloud-sync/issues)
