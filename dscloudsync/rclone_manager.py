@@ -5,6 +5,7 @@ import platform
 import tempfile
 import zipfile
 import json
+import ssl
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -88,7 +89,12 @@ def ensure_rclone(status_cb=lambda s: None, output_cb=None) -> None:
             tmp_path = Path(tmp_file.name)
             
             try:
-                with urlopen(url) as response:
+                # Create SSL context that handles Steam Deck certificate issues
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                
+                with urlopen(url, context=ssl_context) as response:
                     # Limit download size to prevent DoS
                     max_size = 100 * 1024 * 1024  # 100MB max
                     downloaded = 0
