@@ -193,7 +193,7 @@ def bisync(local_dir: str, remote_dir: str, resync: bool = False, output_cb=None
 
 
 def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None) -> bool:
-    """Simplified cloud provider setup using rclone's built-in web auth."""
+    """Simplified cloud provider setup that provides manual instructions."""
     
     # Map provider names to rclone backend types
     backend_map = {
@@ -213,29 +213,23 @@ def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None)
     try:
         if output_cb:
             output_cb(f"Setting up {provider} cloud storage...\n")
-            output_cb("This will open your web browser for authentication.\n")
+            output_cb("\n" + "="*50 + "\n")
+            output_cb("MANUAL SETUP REQUIRED\n")
+            output_cb("="*50 + "\n")
+            output_cb(f"Due to Steam Deck limitations, please run this command manually:\n")
+            output_cb(f"  rclone config\n\n")
+            output_cb("Then follow these steps:\n")
+            output_cb("1. Choose 'n' for new remote\n")
+            output_cb(f"2. Name: {remote_name}\n")
+            output_cb(f"3. Storage type: {backend_type}\n")
+            output_cb("4. Follow the prompts for authentication\n")
+            output_cb("5. When asked about browser authentication, choose 'n' for no\n")
+            output_cb("6. Copy the provided URL and open it in a browser\n")
+            output_cb("7. Complete authentication and paste the code back\n")
+            output_cb("\nAfter setup, restart this app and try syncing again.\n")
+            output_cb("="*50 + "\n")
         
-        # Use simple rclone config create with minimal options
-        cmd = [str(RCLONE_BIN), "config", "create", remote_name, backend_type]
-        
-        # Add provider-specific minimal settings
-        if provider == "gdrive":
-            cmd.extend(["scope", "drive"])
-        
-        if output_cb:
-            output_cb("Starting authentication process...\n")
-        
-        result = run(cmd, check=False, output_callback=output_cb)
-        
-        if result.returncode == 0:
-            if output_cb:
-                output_cb(f"✅ Successfully set up {provider}!\n")
-            return True
-        else:
-            if output_cb:
-                output_cb(f"❌ Setup failed with exit code {result.returncode}\n")
-                output_cb("This usually means authentication was cancelled or failed.\n")
-            return False
+        return False  # Always return False to indicate manual setup needed
             
     except Exception as e:
         if output_cb:
