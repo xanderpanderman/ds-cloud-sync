@@ -151,6 +151,13 @@ def pick_profile_dir(root: Path) -> Path:
 
 def find_save_file(dir_path: Path) -> Path:
     """Locate .sl2 save file in directory."""
+    # First check for any .sl2 files
+    sl2_files = list(dir_path.glob("*.sl2"))
+    if sl2_files:
+        # Return the first .sl2 file found
+        return sl2_files[0]
+    
+    # Fallback: check specific names
     for save_name in SAVE_BASENAMES:
         save_path = dir_path / save_name
         if save_path.exists():
