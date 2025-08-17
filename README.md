@@ -44,12 +44,12 @@ A cross-platform GUI application for syncing Dark Souls 2 saves (both Scholar of
 
 **Quick install** (Desktop Mode terminal):
 ```bash
-wget https://github.com/xanderpanderman/ds-cloud-sync/releases/download/v1.0.3/ds2cloudsync-linux-x64 -O ds2cloudsync && chmod +x ds2cloudsync && ./ds2cloudsync
+wget https://github.com/xanderpanderman/ds-cloud-sync/releases/download/v1.0.4/ds2cloudsync-linux-x64 -O ds2cloudsync && chmod +x ds2cloudsync && ./ds2cloudsync
 ```
 
 **Install to Applications folder**:
 ```bash
-mkdir -p ~/Applications && cd ~/Applications && wget https://github.com/xanderpanderman/ds-cloud-sync/releases/download/v1.0.3/ds2cloudsync-linux-x64 -O ds2cloudsync && chmod +x ds2cloudsync && ./ds2cloudsync
+mkdir -p ~/Applications && cd ~/Applications && wget https://github.com/xanderpanderman/ds-cloud-sync/releases/download/v1.0.4/ds2cloudsync-linux-x64 -O ds2cloudsync && chmod +x ds2cloudsync && ./ds2cloudsync
 ```
 
 *Note: Using `wget` instead of `curl` for better Steam Deck compatibility*
