@@ -193,9 +193,8 @@ def bisync(local_dir: str, remote_dir: str, resync: bool = False, output_cb=None
 
 
 def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None) -> bool:
-    """Simplified cloud provider setup that provides manual instructions."""
+    """Streamlined cloud provider setup with device authentication."""
     
-    # Map provider names to rclone backend types
     backend_map = {
         "gdrive": "drive",
         "onedrive": "onedrive", 
@@ -212,24 +211,67 @@ def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None)
     
     try:
         if output_cb:
-            output_cb(f"Setting up {provider} cloud storage...\n")
-            output_cb("\n" + "="*50 + "\n")
-            output_cb("MANUAL SETUP REQUIRED\n")
-            output_cb("="*50 + "\n")
-            output_cb(f"Due to Steam Deck limitations, please run this command manually:\n")
-            output_cb(f"  rclone config\n\n")
-            output_cb("Then follow these steps:\n")
-            output_cb("1. Choose 'n' for new remote\n")
-            output_cb(f"2. Name: {remote_name}\n")
-            output_cb(f"3. Storage type: {backend_type}\n")
-            output_cb("4. Follow the prompts for authentication\n")
-            output_cb("5. When asked about browser authentication, choose 'n' for no\n")
-            output_cb("6. Copy the provided URL and open it in a browser\n")
-            output_cb("7. Complete authentication and paste the code back\n")
-            output_cb("\nAfter setup, restart this app and try syncing again.\n")
-            output_cb("="*50 + "\n")
+            output_cb(f"Setting up {provider} cloud storage...\n\n")
+            output_cb("STEP 1: Creating basic configuration...\n")
         
-        return False  # Always return False to indicate manual setup needed
+        # Create a basic remote configuration first
+        cmd = [str(RCLONE_BIN), "config", "create", remote_name, backend_type]
+        result = run(cmd, check=False, output_callback=output_cb)
+        
+        if result.returncode != 0:
+            if output_cb:
+                output_cb(f"❌ Failed to create basic config: {result.stderr}\n")
+            return False
+            
+        if output_cb:
+            output_cb("✅ Basic configuration created.\n\n")
+            output_cb("STEP 2: Getting authentication token...\n")
+            output_cb("=" * 60 + "\n")
+            output_cb("🔐 AUTHENTICATION REQUIRED\n")
+            output_cb("=" * 60 + "\n")
+            output_cb("The following will show a URL and code.\n")
+            output_cb("1. Copy the URL and open it in any browser\n")
+            output_cb("2. Sign in to your account\n") 
+            output_cb("3. Enter the code when prompted\n")
+            output_cb("4. Authorize the application\n")
+            output_cb("=" * 60 + "\n\n")
+        
+        # Get auth token using rclone authorize
+        auth_cmd = [str(RCLONE_BIN), "authorize", backend_type]
+        auth_result = run(auth_cmd, check=False, output_callback=output_cb)
+        
+        if auth_result.returncode == 0 and auth_result.stdout.strip():
+            # Extract token from output
+            token_line = None
+            for line in auth_result.stdout.split('\n'):
+                if 'token' in line.lower() or '{' in line:
+                    token_line = line.strip()
+                    break
+            
+            if token_line:
+                if output_cb:
+                    output_cb(f"\n✅ Authorization successful!\n")
+                    output_cb("STEP 3: Updating configuration with token...\n")
+                
+                # Update the remote with the token
+                update_cmd = [str(RCLONE_BIN), "config", "update", remote_name, "token", token_line]
+                update_result = run(update_cmd, check=False, output_callback=output_cb)
+                
+                if update_result.returncode == 0:
+                    if output_cb:
+                        output_cb(f"🎉 Successfully set up {provider}!\n")
+                    return True
+                else:
+                    if output_cb:
+                        output_cb(f"❌ Failed to update config with token: {update_result.stderr}\n")
+            else:
+                if output_cb:
+                    output_cb("❌ Could not extract authentication token\n")
+        else:
+            if output_cb:
+                output_cb(f"❌ Authentication failed: {auth_result.stderr}\n")
+        
+        return False
             
     except Exception as e:
         if output_cb:
