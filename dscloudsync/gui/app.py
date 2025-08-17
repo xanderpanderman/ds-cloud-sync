@@ -415,6 +415,15 @@ class App(tk.Tk):
         self.set_status(message if success else "Error.")
         
         if success:
+            # After successful sync, consolidate cross-platform saves
+            try:
+                from ..save_detection import consolidate_cross_platform_saves
+                if hasattr(self, 'local_root') and self.local_root:
+                    consolidate_cross_platform_saves(self.local_root)
+            except Exception:
+                # Don't let consolidation errors affect sync success
+                pass
+                
             messagebox.showinfo("Sync Complete", message)
         else:
             messagebox.showerror("Sync Error", message)
@@ -425,6 +434,15 @@ class App(tk.Tk):
         self.set_status(message if success else "Error.")
         
         if success:
+            # After successful sync, consolidate cross-platform saves
+            try:
+                from ..save_detection import consolidate_cross_platform_saves
+                if hasattr(self, 'local_root') and self.local_root:
+                    consolidate_cross_platform_saves(self.local_root)
+            except Exception:
+                # Don't let consolidation errors affect sync success
+                pass
+                
             messagebox.showinfo("Sync", message)
         else:
             messagebox.showerror("Sync error", message)

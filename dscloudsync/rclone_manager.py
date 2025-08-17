@@ -239,7 +239,7 @@ def test_remote_connection(remote_name: str, output_cb=None) -> bool:
 
 
 def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None) -> bool:
-    """Streamlined cloud provider setup with device authentication."""
+    """Streamlined cloud provider setup with proper local authentication."""
     
     backend_map = {
         "gdrive": "drive",
@@ -256,114 +256,153 @@ def setup_cloud_provider_simple(provider: str, remote_name: str, output_cb=None)
     backend_type = backend_map[provider]
     
     try:
+        import platform
+        
         if output_cb:
             output_cb(f"Setting up {provider} cloud storage...\n\n")
-            output_cb("STEP 1: Creating basic configuration...\n")
         
-        # Create a basic remote configuration first
-        cmd = [str(RCLONE_BIN), "config", "create", remote_name, backend_type]
-        result = run(cmd, check=False, output_callback=output_cb)
-        
-        if result.returncode != 0:
+        # For Windows, use config create with local authentication
+        if platform.system() == "Windows":
             if output_cb:
-                output_cb(f"❌ Failed to create basic config: {result.stderr}\n")
-            return False
-            
-        if output_cb:
-            output_cb("✅ Basic configuration created.\n\n")
-            output_cb("STEP 2: Getting authentication token...\n")
-            output_cb("=" * 60 + "\n")
-            output_cb("🔐 AUTHENTICATION REQUIRED\n")
-            output_cb("=" * 60 + "\n")
-            output_cb("The following will show a URL and code.\n")
-            output_cb("1. Copy the URL and open it in any browser\n")
-            output_cb("2. Sign in to your account\n") 
-            output_cb("3. Enter the code when prompted\n")
-            output_cb("4. Authorize the application\n")
-            output_cb("=" * 60 + "\n\n")
-        
-        # Try rclone authorize, but handle SSL library issues on Steam Deck
-        auth_cmd = [str(RCLONE_BIN), "authorize", backend_type]
-        
-        # Set environment to potentially bypass SSL issues
-        import os
-        env = os.environ.copy()
-        env['SSL_CERT_FILE'] = ''
-        env['SSL_CERT_DIR'] = ''
-        
-        try:
-            auth_result = run(auth_cmd, check=False, output_callback=output_cb, env=env)
-        except Exception as e:
-            if output_cb:
-                output_cb(f"Authorization failed due to system libraries: {str(e)}\n")
-                output_cb("Falling back to manual setup instructions...\n\n")
+                output_cb("STEP 1: Setting up cloud authentication...\n")
                 output_cb("=" * 60 + "\n")
-                output_cb("MANUAL SETUP REQUIRED (Steam Deck)\n") 
+                output_cb("🔐 BROWSER AUTHENTICATION\n")
                 output_cb("=" * 60 + "\n")
-                output_cb("Due to Steam Deck system limitations, please:\n\n")
-                output_cb("1. Open a new terminal (Konsole)\n")
-                output_cb("2. Navigate to the rclone directory:\n")
-                output_cb(f"   cd {RCLONE_BIN.parent}\n")
-                output_cb("3. Run rclone config:\n")
-                output_cb(f"   ./rclone config\n")
-                output_cb("4. Choose 'n' for new remote\n")
-                output_cb(f"5. Name: {remote_name}\n")
-                output_cb(f"6. Storage: {backend_type}\n")
-                output_cb("7. Follow authentication prompts\n")
-                output_cb("8. When asked about config_is_local, choose 'y'\n")
-                output_cb("9. When complete, restart this app\n")
-                output_cb("=" * 60 + "\n")
-            return False
-        
-        if auth_result.returncode == 0 and auth_result.stdout.strip():
-            # Extract token from output - looking for JSON token object
-            import json
-            token_line = None
+                output_cb("A browser window will open for authentication.\n")
+                output_cb("Please sign in and authorize the application.\n")
+                output_cb("This may take a moment to complete.\n")
+                output_cb("=" * 60 + "\n\n")
             
-            # Try to find JSON token in the output
-            # rclone authorize outputs the token with surrounding text we need to extract
-            for line in auth_result.stdout.split('\n'):
-                line = line.strip()
-                # Look for lines containing JSON with access_token
-                if '{' in line and '"access_token"' in line:
-                    # Extract just the JSON part (between { and })
-                    start_idx = line.find('{')
-                    end_idx = line.rfind('}')
-                    if start_idx != -1 and end_idx != -1:
-                        json_str = line[start_idx:end_idx+1]
-                        try:
-                            # Validate it's proper JSON
-                            json.loads(json_str)
-                            token_line = json_str
-                            break
-                        except:
-                            continue
+            # First delete any existing config with same name
+            delete_cmd = [str(RCLONE_BIN), "config", "delete", remote_name]
+            run(delete_cmd, check=False, output_callback=None)  # Ignore errors if doesn't exist
             
-            if token_line:
+            # Create remote with local browser authentication
+            # config_is_local=true tells rclone to handle OAuth with local browser
+            create_cmd = [str(RCLONE_BIN), "config", "create", remote_name, backend_type, "config_is_local=true"]
+            result = run(create_cmd, check=False, output_callback=output_cb)
+            
+            if result.returncode == 0:
                 if output_cb:
-                    output_cb(f"\n✅ Authorization successful!\n")
-                    output_cb("STEP 3: Updating configuration with token...\n")
-                
-                # Update the remote with the token
-                update_cmd = [str(RCLONE_BIN), "config", "update", remote_name, "token", token_line]
-                update_result = run(update_cmd, check=False, output_callback=output_cb)
-                
-                if update_result.returncode == 0:
-                    if output_cb:
-                        output_cb(f"🎉 Successfully set up {provider}!\n")
-                    return True
-                else:
-                    if output_cb:
-                        output_cb(f"❌ Failed to update config with token: {update_result.stderr}\n")
+                    output_cb(f"\n🎉 Successfully set up {provider}!\n")
+                return True
             else:
                 if output_cb:
-                    output_cb("❌ Could not extract authentication token\n")
-                    output_cb(f"Debug - auth output: {auth_result.stdout[:500]}\n")
+                    output_cb(f"❌ Authentication failed: {result.stderr}\n")
+                    output_cb("If the browser didn't open, you may need to:\n")
+                    output_cb("1. Check if Windows Firewall is blocking port 53682\n")
+                    output_cb("2. Or set up the remote manually using 'rclone config'\n")
+                return False
+                
         else:
+            # For Linux/Steam Deck, use the original flow
             if output_cb:
-                output_cb(f"❌ Authentication failed: {auth_result.stderr}\n")
-        
-        return False
+                output_cb("STEP 1: Creating basic configuration...\n")
+            
+            # Create a basic remote configuration first
+            cmd = [str(RCLONE_BIN), "config", "create", remote_name, backend_type]
+            result = run(cmd, check=False, output_callback=output_cb)
+            
+            if result.returncode != 0:
+                if output_cb:
+                    output_cb(f"❌ Failed to create basic config: {result.stderr}\n")
+                return False
+                
+            if output_cb:
+                output_cb("✅ Basic configuration created.\n\n")
+                output_cb("STEP 2: Getting authentication token...\n")
+                output_cb("=" * 60 + "\n")
+                output_cb("🔐 AUTHENTICATION REQUIRED\n")
+                output_cb("=" * 60 + "\n")
+                output_cb("The following will show a URL and code.\n")
+                output_cb("1. Copy the URL and open it in any browser\n")
+                output_cb("2. Sign in to your account\n") 
+                output_cb("3. Enter the code when prompted\n")
+                output_cb("4. Authorize the application\n")
+                output_cb("=" * 60 + "\n\n")
+            
+            # Try rclone authorize, but handle SSL library issues on Steam Deck
+            auth_cmd = [str(RCLONE_BIN), "authorize", backend_type]
+            
+            # Set environment to potentially bypass SSL issues
+            import os
+            env = os.environ.copy()
+            env['SSL_CERT_FILE'] = ''
+            env['SSL_CERT_DIR'] = ''
+            
+            try:
+                auth_result = run(auth_cmd, check=False, output_callback=output_cb, env=env)
+            except Exception as e:
+                if output_cb:
+                    output_cb(f"Authorization failed due to system libraries: {str(e)}\n")
+                    output_cb("Falling back to manual setup instructions...\n\n")
+                    output_cb("=" * 60 + "\n")
+                    output_cb("MANUAL SETUP REQUIRED (Steam Deck)\n") 
+                    output_cb("=" * 60 + "\n")
+                    output_cb("Due to Steam Deck system limitations, please:\n\n")
+                    output_cb("1. Open a new terminal (Konsole)\n")
+                    output_cb("2. Navigate to the rclone directory:\n")
+                    output_cb(f"   cd {RCLONE_BIN.parent}\n")
+                    output_cb("3. Run rclone config:\n")
+                    output_cb(f"   ./rclone config\n")
+                    output_cb("4. Choose 'n' for new remote\n")
+                    output_cb(f"5. Name: {remote_name}\n")
+                    output_cb(f"6. Storage: {backend_type}\n")
+                    output_cb("7. Follow authentication prompts\n")
+                    output_cb("8. When asked about config_is_local, choose 'y'\n")
+                    output_cb("9. When complete, restart this app\n")
+                    output_cb("=" * 60 + "\n")
+                return False
+            
+            if auth_result.returncode == 0 and auth_result.stdout.strip():
+                # Extract token from output - looking for JSON token object
+                import json
+                token_line = None
+                
+                # Try to find JSON token in the output
+                # rclone authorize outputs the token with surrounding text we need to extract
+                for line in auth_result.stdout.split('\n'):
+                    line = line.strip()
+                    # Look for lines containing JSON with access_token
+                    if '{' in line and '"access_token"' in line:
+                        # Extract just the JSON part (between { and })
+                        start_idx = line.find('{')
+                        end_idx = line.rfind('}')
+                        if start_idx != -1 and end_idx != -1:
+                            json_str = line[start_idx:end_idx+1]
+                            try:
+                                # Validate it's proper JSON
+                                json.loads(json_str)
+                                token_line = json_str
+                                break
+                            except:
+                                continue
+                
+                if token_line:
+                    if output_cb:
+                        output_cb(f"\n✅ Authorization successful!\n")
+                        output_cb("STEP 3: Updating configuration with token...\n")
+                    
+                    # Update the remote with the token
+                    update_cmd = [str(RCLONE_BIN), "config", "update", remote_name, "token", token_line]
+                    update_result = run(update_cmd, check=False, output_callback=output_cb)
+                    
+                    if update_result.returncode == 0:
+                        if output_cb:
+                            output_cb(f"🎉 Successfully set up {provider}!\n")
+                        return True
+                    else:
+                        if output_cb:
+                            output_cb(f"❌ Failed to update config with token: {update_result.stderr}\n")
+                else:
+                    if output_cb:
+                        output_cb("❌ Could not extract authentication token\n")
+                        output_cb(f"Debug - auth output: {auth_result.stdout[:500]}\n")
+            else:
+                if output_cb:
+                    output_cb(f"❌ Authentication failed: {auth_result.stderr}\n")
+            
+            return False
             
     except Exception as e:
         if output_cb:

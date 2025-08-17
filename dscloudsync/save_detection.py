@@ -132,28 +132,42 @@ def check_ds2_installation() -> dict:
 
 
 def pick_profile_dir(root: Path) -> Path:
-    """Select most recently used profile directory."""
+    """Select profile directory, prioritizing ones with actual saves for cross-platform compatibility."""
     root.mkdir(parents=True, exist_ok=True)
     
     # Find all profile directories (numeric or hex)
     profile_dirs = [p for p in root.glob("*") if p.is_dir() and len(p.name) > 5]
     
     if not profile_dirs:
-        # Create default profile if none exist
-        default_profile = root / "00000000000000000"
+        # Create default profile if none exist - use generic Steam ID format
+        default_profile = root / "0000000000000000"  # Generic default profile
         default_profile.mkdir(parents=True, exist_ok=True)
         return default_profile
     
-    # Return profile with most recent save file activity
-    profile_dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    # Prioritize directories that actually contain save files
+    profiles_with_saves = []
+    profiles_without_saves = []
     
-    # Additional check: prefer directories that actually contain save files
     for profile_dir in profile_dirs:
         sl2_files = list(profile_dir.glob("*.sl2"))
         if sl2_files:
-            return profile_dir
+            # Check modification time of most recent save file
+            most_recent_save = max(sl2_files, key=lambda f: f.stat().st_mtime)
+            profiles_with_saves.append((profile_dir, most_recent_save.stat().st_mtime))
+        else:
+            profiles_without_saves.append((profile_dir, profile_dir.stat().st_mtime))
     
-    # Fallback to most recent
+    # If we have profiles with saves, return the one with most recent save activity
+    if profiles_with_saves:
+        profiles_with_saves.sort(key=lambda x: x[1], reverse=True)
+        return profiles_with_saves[0][0]
+    
+    # If no profiles have saves, return most recently modified directory
+    if profiles_without_saves:
+        profiles_without_saves.sort(key=lambda x: x[1], reverse=True)
+        return profiles_without_saves[0][0]
+    
+    # This shouldn't happen, but fallback to first profile
     return profile_dirs[0]
 
 
@@ -168,8 +182,49 @@ def find_save_file(dir_path: Path) -> Path:
     # Fallback: check for any .sl2 files
     sl2_files = list(dir_path.glob("*.sl2"))
     if sl2_files:
-        # Return the first .sl2 file found
-        return sl2_files[0]
+        # Return the most recently modified .sl2 file
+        return max(sl2_files, key=lambda f: f.stat().st_mtime)
     
     # Return default path if no save exists yet
     return dir_path / SAVE_BASENAMES[0]
+
+
+def consolidate_cross_platform_saves(root: Path) -> None:
+    """Consolidate saves from different profile directories for cross-platform compatibility.
+    
+    This helps when saves are synced from a different platform with a different Steam ID.
+    Moves saves from other profile directories to the currently active one.
+    """
+    try:
+        # Find all profile directories
+        profile_dirs = [p for p in root.glob("*") if p.is_dir() and len(p.name) > 5]
+        
+        if len(profile_dirs) <= 1:
+            return  # Nothing to consolidate
+        
+        # Find the active profile (the one we would use)
+        active_profile = pick_profile_dir(root)
+        
+        # Look for saves in other profile directories
+        for profile_dir in profile_dirs:
+            if profile_dir == active_profile:
+                continue
+                
+            # Check if this directory has saves
+            sl2_files = list(profile_dir.glob("*.sl2"))
+            if not sl2_files:
+                continue
+                
+            # Move saves to active profile if they're newer or if active profile is empty
+            active_saves = list(active_profile.glob("*.sl2"))
+            
+            for save_file in sl2_files:
+                dest_path = active_profile / save_file.name
+                
+                # Move if destination doesn't exist or source is newer
+                if not dest_path.exists() or save_file.stat().st_mtime > dest_path.stat().st_mtime:
+                    save_file.rename(dest_path)
+                    
+    except Exception:
+        # Don't let consolidation errors break the main flow
+        pass
