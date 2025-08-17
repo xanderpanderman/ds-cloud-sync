@@ -80,7 +80,8 @@ def check_ds2_installation() -> dict:
             }
         
         # Check for any profile directories (DS2 saves)
-        profile_dirs = [p for p in save_root.glob("*") if p.is_dir() and p.name.isdigit()]
+        # Profile dirs can be numeric or hex (e.g., "0110000107afa7e2")
+        profile_dirs = [p for p in save_root.glob("*") if p.is_dir() and len(p.name) > 5]
         
         if not profile_dirs:
             return {
@@ -134,8 +135,8 @@ def pick_profile_dir(root: Path) -> Path:
     """Select most recently used profile directory."""
     root.mkdir(parents=True, exist_ok=True)
     
-    # Find all numeric profile directories
-    profile_dirs = [p for p in root.glob("*") if p.is_dir() and p.name.isdigit()]
+    # Find all profile directories (numeric or hex)
+    profile_dirs = [p for p in root.glob("*") if p.is_dir() and len(p.name) > 5]
     
     if not profile_dirs:
         # Create default profile if none exist
